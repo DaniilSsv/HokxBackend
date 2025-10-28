@@ -15,7 +15,15 @@ if (!MONGODB_URI) {
 }
 
 mongoose.connect(MONGODB_URI, { dbName: process.env.DB_NAME || undefined })
-  .then(() => console.log('Connected to MongoDB'))
+  .then(() => {
+    console.log('Connected to MongoDB')
+    // start scheduled cleanup of old dates (Belgium timezone)
+    try {
+      require('./cron/cleanupOldDates').startCleanupCron()
+    } catch (err) {
+      console.error('Failed to start cleanup cron', err)
+    }
+  })
   .catch(err => {
     console.error('MongoDB connection error', err)
     process.exit(1)
