@@ -2,6 +2,11 @@ const express = require('express')
 const router = express.Router()
 const Vote = require('../models/Vote')
 
+// helper to safely build case-insensitive regex matching the whole string
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 // GET /votes - return all votes as { date: [names] }
 router.get('/', async (req, res) => {
   try {
@@ -21,47 +26,23 @@ router.post('/', async (req, res) => {
   const { name, dates } = req.body || {}
   if (!name || !Array.isArray(dates)) return res.status(400).json({ error: 'name and dates[] required' })
 
-  try {
-    // remove name from all docs
-    await Vote.updateMany({}, { $pull: { names: name } })
+  const trimmed = String(name).trim()
+  if (!trimmed) return res.status(400).json({ error: 'name must not be empty' })
 
-    // add to each date with $addToSet
+  try {
+    // remove any existing entries that match the name case-insensitively across all dates
+    const regex = new RegExp(`^${escapeRegex(trimmed)}$`, 'i')
+    await Vote.updateMany({}, { $pull: { names: { $regex: regex } } })
+
+    // add the provided-cased name to each requested date (will upsert documents)
     for (const date of dates) {
-      await Vote.updateOne({ date }, { $addToSet: { names: name } }, { upsert: true })
+      await Vote.updateOne({ date }, { $addToSet: { names: trimmed } }, { upsert: true })
     }
 
     res.json({ ok: true })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'failed to update votes' })
-  }
-})
-
-// DELETE /votes?name=Alice - removes the named user from all dates
-router.delete('/', async (req, res) => {
-  const name = req.query.name
-  if (!name) return res.status(400).json({ error: 'name query required' })
-  try {
-    await Vote.updateMany({}, { $pull: { names: name } })
-    res.json({ ok: true })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'failed to remove votes' })
-  }
-})
-
-// POST /votes/remove - body { name, dates: ["YYYY-MM-DD"] } - removes the named user from the specified dates only
-router.post('/remove', async (req, res) => {
-  const { name, dates } = req.body || {}
-  if (!name || !Array.isArray(dates)) return res.status(400).json({ error: 'name and dates[] required' })
-  try {
-    for (const date of dates) {
-      await Vote.updateOne({ date }, { $pull: { names: name } })
-    }
-    res.json({ ok: true })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'failed to remove from dates' })
   }
 })
 
