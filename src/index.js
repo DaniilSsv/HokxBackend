@@ -3,6 +3,8 @@ const express = require('express')
 const mongoose = require('mongoose')
 const cors = require('cors')
 const votesRouter = require('./routes/votes')
+const swaggerUi = require('swagger-ui-express')
+const swaggerDocument = require('./swagger.json')
 
 const app = express()
 app.use(cors())
@@ -30,6 +32,13 @@ mongoose.connect(MONGODB_URI, { dbName: process.env.DB_NAME || undefined })
   })
 
 app.use('/votes', votesRouter)
+
+// Swagger UI at /docs
+try {
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
+} catch (err) {
+  console.error('Failed to mount Swagger UI', err)
+}
 
 app.get('/', (req, res) => res.json({ ok: true, message: 'BeHokx votes API' }))
 

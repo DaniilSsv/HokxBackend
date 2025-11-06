@@ -1,0 +1,83 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "BeHokx Votes API",
+    "version": "1.0.0",
+    "description": "Simple API for managing votes/dates"
+  },
+  "servers": [
+    { "url": "https://hokx-backend.vercel.app", "description": "Production server" }
+  ],
+  "paths": {
+    "/votes": {
+      "get": {
+        "summary": "Get all votes",
+        "description": "Returns all votes as an object where keys are dates (YYYY-MM-DD) and values are arrays of names.",
+        "responses": {
+          "200": {
+            "description": "A map of dates to name arrays",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Set a user's votes",
+        "description": "(Re)Place a user's votes. Sends name and an array of dates to set. Existing entries matching the name case-insensitively will be normalized to the provided casing.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "dates": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "date" }
+                  }
+                },
+                "required": ["name","dates"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "ok", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
+          "400": { "description": "Bad request" },
+          "500": { "description": "Server error" }
+        }
+      },
+      "delete": {
+        "summary": "Remove a user from all dates",
+        "parameters": [
+          { "name": "name", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "ok" },
+          "400": { "description": "Bad request" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Vote": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "names": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}
